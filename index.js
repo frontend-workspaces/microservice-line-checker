@@ -248,10 +248,10 @@ app.post("/check-line-status", async (req, res) => {
   console.log("[/check-line-status]");
 
   const textResponse = (lineId, status) => {
-    if (status === "ACTIVE") return `สถานะ LINE ID ${lineId}: 🟢 ปกติ`;
-    if (status === "SUSPENDED") return `สถานะ LINE ID ${lineId}: 🔴 ถูกระงับ`;
-    if (status === "NOT_FOUND")
-      return `สถานะ LINE ID ${lineId}: 🟠 ไม่พบข้อมูล`;
+    if (status === "ACTIVE")    return `LINE ID <b>${lineId}</b>: สถานะ 🟢 ปกติ`;
+    if (status === "SUSPENDED") return `LINE ID <b>${lineId}</b>: สถานะ 🔴 ถูกระงับ`;
+    if (status === "UNKNOWN")   return `LINE ID <b>${lineId}</b>: สถานะ ⚪ ไม่ทราบ`;
+    if (status === "NOT_FOUND") return `LINE ID <b>${lineId}</b>: สถานะ 🟠 ไม่พบข้อมูล`;
 
     return `สถานะ LINE ID ${lineId}: ${status}`;
   };
