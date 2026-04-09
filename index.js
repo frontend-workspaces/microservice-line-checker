@@ -97,6 +97,14 @@ async function checkLineId(page, lineId) {
 }
 
 // single check
+app.get("/", async (req, res) => {
+    return res.json({
+        status: true,
+        version: '1.0.0',
+        app: 'microservice-line-checker'
+    })
+})
+
 app.get("/check-line", async (req, res) => {
   const lineId = req.query.id;
 
