@@ -1,7 +1,10 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { checkLineIdType } = require("./utils");
+require("dotenv").config();
+
+const { checkLineIdType } = require("./utils/utils");
+const { sendTelegramNotice } = require("./utils/telegram");
 
 const app = express();
 const PORT = 3000;
@@ -89,9 +92,7 @@ async function fetchLinePage(url) {
 
   // axios in Node usually exposes the final redirected URL here
   const finalUrl =
-    response?.request?.res?.responseUrl ||
-    response?.request?.path ||
-    url;
+    response?.request?.res?.responseUrl || response?.request?.path || url;
 
   return {
     statusCode: response.status,
@@ -234,6 +235,54 @@ app.post("/check-line-list", async (req, res) => {
       total: results.length,
       summary,
       results,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      message: error.message,
+    });
+  }
+});
+
+app.post("/check-line-status", async (req, res) => {
+  console.log("[/check-line-status]");
+
+  const textResponse = (lineId, status) => {
+    if (status === "ACTIVE") return `สถานะ LINE ID ${lineId}: 🟢 ปกติ`;
+    if (status === "SUSPENDED") return `สถานะ LINE ID ${lineId}: 🔴 ถูกระงับ`;
+    if (status === "NOT_FOUND")
+      return `สถานะ LINE ID ${lineId}: 🟠 ไม่พบข้อมูล`;
+
+    return `สถานะ LINE ID ${lineId}: ${status}`;
+  };
+
+  const lineIds = (process.env.LINE_ID_LIST || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+  if (lineIds.length === 0) {
+    return res.status(400).json({
+      ok: false,
+      message: "lineIds array is empty",
+    });
+  }
+
+  try {
+    for (const id of lineIds) {
+      try {
+        const result = await checkLineId(id);
+        await sendTelegramNotice({
+          text: textResponse(result.lineId, result.status),
+        });
+      } catch (error) {
+        console.log("ERROR checkLineId:", error);
+      }
+    }
+
+    return res.json({
+      ok: true,
+      lineIds,
     });
   } catch (error) {
     return res.status(500).json({

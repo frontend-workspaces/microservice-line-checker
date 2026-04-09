@@ -1,7 +1,7 @@
 // app.js
 const express = require("express");
 const puppeteer = require("puppeteer");
-const { checkLineIdType } = require("./utils");
+const { checkLineIdType } = require("./utils/utils");
 
 const app = express();
 const PORT = 3000;
