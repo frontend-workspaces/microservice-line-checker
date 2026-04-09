@@ -17,11 +17,11 @@ function detectLineStatus({ finalUrl, title, pTexts }) {
   const normalizedPTexts = pTexts.map(normalizeText);
 
   const has404Text = normalizedPTexts.some((text) =>
-    text.includes("404 not found")
+    text.includes("404 not found"),
   );
 
   const hasScanText = normalizedPTexts.some((text) =>
-    text.includes("scan qr code to add friend")
+    text.includes("scan qr code to add friend"),
   );
 
   if (finalUrl.startsWith("https://store.line.me")) {
@@ -80,7 +80,7 @@ async function checkLineId(page, lineId) {
   const title = await page.title();
 
   const pTexts = await page.$$eval("p", (elements) =>
-    elements.map((el) => el.textContent?.trim() || "").filter(Boolean)
+    elements.map((el) => el.textContent?.trim() || "").filter(Boolean),
   );
 
   const detection = detectLineStatus({ finalUrl, title, pTexts });
@@ -98,14 +98,17 @@ async function checkLineId(page, lineId) {
 
 // single check
 app.get("/", async (req, res) => {
-    return res.json({
-        status: true,
-        version: '1.0.0',
-        app: 'microservice-line-checker'
-    })
-})
+  return res.json({
+    status: true,
+    version: "1.0.0",
+    app: "microservice-line-checker",
+  });
+});
 
 app.get("/check-line", async (req, res) => {
+  console.log("[/check-line]");
+  console.log("req.query.id:", req.query.id);
+
   const lineId = req.query.id;
 
   if (!lineId) {
@@ -140,6 +143,9 @@ app.get("/check-line", async (req, res) => {
 });
 
 app.post("/check-line-list", async (req, res) => {
+  console.log("[/check-line-list]");
+  console.log("req.body?.ids:", req.body?.ids);
+  
   const ids = req.body?.ids;
 
   if (!Array.isArray(ids)) {
