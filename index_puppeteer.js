@@ -1,6 +1,6 @@
+// app.js
 const express = require("express");
-const axios = require("axios");
-const cheerio = require("cheerio");
+const puppeteer = require("puppeteer");
 const { checkLineIdType } = require("./utils");
 
 const app = express();
@@ -9,7 +9,7 @@ const PORT = 3000;
 app.use(express.json());
 
 function normalizeText(text = "") {
-  return String(text).trim().toLowerCase();
+  return text.trim().toLowerCase();
 }
 
 function detectLineStatus({ finalUrl, title, pTexts }) {
@@ -67,58 +67,21 @@ function detectLineStatus({ finalUrl, title, pTexts }) {
   };
 }
 
-async function fetchLinePage(url) {
-  const response = await axios.get(url, {
-    timeout: 15000,
-    maxRedirects: 5,
-    validateStatus: () => true,
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-      Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-      Connection: "keep-alive",
-    },
-  });
-
-  const html =
-    typeof response.data === "string"
-      ? response.data
-      : JSON.stringify(response.data);
-
-  // axios in Node usually exposes the final redirected URL here
-  const finalUrl =
-    response?.request?.res?.responseUrl ||
-    response?.request?.path ||
-    url;
-
-  return {
-    statusCode: response.status,
-    finalUrl,
-    html,
-  };
-}
-
-function extractHtmlData(html) {
-  const $ = cheerio.load(html);
-
-  const title = $("title").first().text().trim();
-
-  const pTexts = $("p")
-    .map((_, el) => $(el).text().trim())
-    .get()
-    .filter(Boolean);
-
-  return { title, pTexts };
-}
-
-async function checkLineId(lineId) {
-  const cleanId = String(lineId).trim();
+async function checkLineId(page, lineId) {
+  const cleanId = lineId.trim();
   const url = `https://line.me/R/ti/p/${cleanId}`;
 
-  const { finalUrl, html, statusCode } = await fetchLinePage(url);
-  const { title, pTexts } = extractHtmlData(html);
+  await page.goto(url, {
+    waitUntil: "networkidle2",
+    timeout: 15000,
+  });
+
+  const finalUrl = page.url();
+  const title = await page.title();
+
+  const pTexts = await page.$$eval("p", (elements) =>
+    elements.map((el) => el.textContent?.trim() || "").filter(Boolean),
+  );
 
   const detection = detectLineStatus({ finalUrl, title, pTexts });
 
@@ -127,14 +90,13 @@ async function checkLineId(lineId) {
     idType: checkLineIdType(cleanId),
     inputUrl: url,
     finalUrl,
-    httpStatus: statusCode,
     // title,
     // pTexts,
     ...detection,
   };
 }
 
-// health check
+// single check
 app.get("/", async (req, res) => {
   return res.json({
     status: true,
@@ -143,7 +105,6 @@ app.get("/", async (req, res) => {
   });
 });
 
-// single check
 app.get("/check-line", async (req, res) => {
   console.log("[/check-line]");
   console.log("req.query.id:", req.query.id);
@@ -157,8 +118,15 @@ app.get("/check-line", async (req, res) => {
     });
   }
 
+  let browser;
   try {
-    const result = await checkLineId(lineId);
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    const result = await checkLineId(page, lineId);
 
     return res.json({
       ok: true,
@@ -169,14 +137,15 @@ app.get("/check-line", async (req, res) => {
       ok: false,
       message: error.message,
     });
+  } finally {
+    if (browser) await browser.close();
   }
 });
 
-// batch check
 app.post("/check-line-list", async (req, res) => {
   console.log("[/check-line-list]");
   console.log("req.body?.ids:", req.body?.ids);
-
+  
   const ids = req.body?.ids;
 
   if (!Array.isArray(ids)) {
@@ -196,12 +165,20 @@ app.post("/check-line-list", async (req, res) => {
     });
   }
 
+  let browser;
+
   try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
     const results = [];
 
     for (const id of ids) {
       try {
-        const result = await checkLineId(id);
+        const result = await checkLineId(page, id);
         results.push(result);
       } catch (error) {
         results.push({
@@ -213,6 +190,7 @@ app.post("/check-line-list", async (req, res) => {
       }
     }
 
+    // ✅ summary counter
     const summary = {
       ACTIVE: 0,
       SUSPENDED: 0,
@@ -240,6 +218,8 @@ app.post("/check-line-list", async (req, res) => {
       ok: false,
       message: error.message,
     });
+  } finally {
+    if (browser) await browser.close();
   }
 });
 
