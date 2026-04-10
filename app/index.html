@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Events</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #e8eaf0;
+      --card: #ffffff;
+      --navy: #1a2340;
+      --navy-light: #2d3a5e;
+      --accent: #1a2340;
+      --muted: #6b7280;
+      --badge-today: #e8eaf0;
+      --badge-oct: #f0ecf4;
+      --badge-nov: #f5ecea;
+      --badge-dec: #edf4ec;
+      --border: #e4e6ed;
+      --shadow: 0 2px 16px rgba(26,35,64,0.07);
+      --shadow-hover: 0 6px 32px rgba(26,35,64,0.13);
+      --radius: 16px;
+      --radius-badge: 12px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      padding: 48px 20px 80px;
+      color: var(--navy);
+    }
+
+    .container { max-width: 780px; margin: 0 auto; }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.2rem;
+      color: var(--navy);
+      letter-spacing: -0.5px;
+    }
+
+    /* ── Add Event button ── */
+    .btn-add {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 10px 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-add:hover { background: var(--navy-light); transform: translateY(-1px); }
+
+    /* ── Event list ── */
+    .event-list { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Event card ── */
+    .event-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow: hidden;
+      transition: box-shadow 0.2s, transform 0.2s;
+      animation: slideIn 0.3s ease both;
+    }
+    .event-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Date badge */
+    .date-badge {
+      flex-shrink: 0;
+      width: 120px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      margin: 16px 0 16px 16px;
+      padding: 12px 10px;
+      text-align: center;
+    }
+    .date-badge.today  { background: var(--badge-today); }
+    .date-badge.purple { background: var(--badge-oct); }
+    .date-badge.rose   { background: var(--badge-nov); }
+    .date-badge.green  { background: var(--badge-dec); }
+
+    .date-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--navy-light);
+      margin-bottom: 4px;
+    }
+    .date-time {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      color: var(--navy);
+      line-height: 1;
+    }
+
+    /* Event body */
+    .event-body {
+      flex: 1;
+      padding: 22px 20px;
+    }
+    .event-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.2rem;
+      color: var(--navy);
+      margin-bottom: 6px;
+    }
+    .event-desc {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* Actions */
+    .event-actions {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 22px 20px;
+    }
+
+    .btn-calendar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      border: none;
+      border-radius: 50px;
+      padding: 9px 16px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+    .btn-calendar.outline {
+      background: transparent;
+      color: var(--navy);
+      border: 1.5px solid var(--border);
+    }
+    .btn-calendar.outline:hover { background: var(--bg); }
+    .btn-calendar.solid {
+      background: var(--navy);
+      color: #fff;
+    }
+    .btn-calendar.solid:hover { background: var(--navy-light); }
+
+    .icon-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-icon:hover { background: var(--bg); color: var(--navy); }
+    .btn-icon.delete:hover { background: #fee2e2; color: #dc2626; }
+
+    /* ── Modal overlay ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(26,35,64,0.35);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: #fff;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 460px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(26,35,64,0.2);
+      animation: popIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.9) translateY(16px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem;
+      color: var(--navy);
+      margin-bottom: 24px;
+    }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--navy-light);
+      margin-bottom: 7px;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      color: var(--navy);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus { border-color: var(--navy); background: #fff; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .btn-cancel {
+      background: var(--bg);
+      color: var(--navy);
+      border: none;
+      border-radius: 50px;
+      padding: 10px 22px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-cancel:hover { background: var(--border); }
+
+    .btn-save {
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 10px 26px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-save:hover { background: var(--navy-light); }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+<div class="container" x-data="eventsApp()">
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1>Status Checker</h1>
+    <button class="btn-add" @click="openAdd()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Add Brand
+    </button>
+  </div>
+
+  <!-- Event list -->
+  <div class="event-list">
+    <template x-if="events.length === 0">
+      <div class="empty">
+        <div class="empty-icon">📅</div>
+        <p>No events yet. Add one!</p>
+      </div>
+    </template>
+
+    <template x-for="(ev, i) in events" :key="ev.id">
+      <div class="event-card">
+
+        <!-- Date badge -->
+        <div class="date-badge" :class="ev.badgeColor">
+          <span class="date-label" x-text="ev.dateLabel"></span>
+          <span class="date-time" x-text="ev.time"></span>
+        </div>
+
+        <!-- Body -->
+        <div class="event-body">
+          <div class="event-title" x-text="ev.title"></div>
+          <div class="event-desc" x-text="ev.description"></div>
+        </div>
+
+        <!-- Actions -->
+        <div class="event-actions">
+          <button
+            class="btn-calendar"
+            :class="ev.added ? 'solid' : 'outline'"
+            @click="ev.added = !ev.added"
+          >
+            <span x-text="ev.added ? '✓' : '+'"></span>
+            <span x-text="ev.added ? 'Added' : 'Add to calendar'"></span>
+          </button>
+          <div class="icon-actions">
+            <button class="btn-icon" title="Edit" @click="openEdit(i)">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                <path d="M14.7 3.3a1 1 0 011.4 1.4l-9.9 9.9-2.1.7.7-2.1 9.9-9.9z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button class="btn-icon delete" title="Delete" @click="deleteEvent(i)">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </template>
+  </div>
+
+  <!-- Modal -->
+  <div class="overlay" x-show="showModal" x-cloak @click.self="showModal = false">
+    <div class="modal" @click.stop>
+      <div class="modal-title" x-text="editIndex === null ? 'New Event' : 'Edit Event'"></div>
+
+      <div class="form-group">
+        <label>Event Title</label>
+        <input type="text" x-model="form.title" placeholder="Bergen Film Festival…" />
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea x-model="form.description" placeholder="Short description of the event…"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date / Range</label>
+          <input type="text" x-model="form.dateLabel" placeholder="TODAY or 22 - 31 OCT" />
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="text" x-model="form.time" placeholder="17:00" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Badge Color</label>
+        <select x-model="form.badgeColor">
+          <option value="today">Blue-grey (Today)</option>
+          <option value="purple">Purple (Oct)</option>
+          <option value="rose">Rose (Nov)</option>
+          <option value="green">Green (Dec)</option>
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" @click="showModal = false">Cancel</button>
+        <button class="btn-save" @click="saveEvent()">
+          <span x-text="editIndex === null ? 'Add Event' : 'Save Changes'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function eventsApp() {
+  return {
+    showModal: false,
+    editIndex: null,
+    form: { title: '', description: '', dateLabel: '', time: '', badgeColor: 'today' },
+
+    events: [
+      {
+        id: 1,
+        title: 'Bergen International Film Festival',
+        description: 'Films from all over the world gather all film enthusiasts for unique moments at the Bergen International Film Festival.',
+        dateLabel: 'TODAY',
+        time: '17:00',
+        badgeColor: 'today',
+        added: false,
+      },
+      {
+        id: 2,
+        title: 'Wool week',
+        description: 'ULLVEKA 2021 will be held for the eighth time in the period 22 - 31 October 2021, and will take place in the entire Bergen region.',
+        dateLabel: '22 - 31 OCT',
+        time: '10:00',
+        badgeColor: 'purple',
+        added: true,
+      },
+      {
+        id: 3,
+        title: 'Light park at Bergenhus Fortress',
+        description: 'LUMAGICA - a magical experience for young and old at Bergenhus Fortress, 12 November to 19 December 2021.',
+        dateLabel: '22 - 31 OCT',
+        time: '19:00',
+        badgeColor: 'rose',
+        added: false,
+      },
+      {
+        id: 4,
+        title: 'Gingerbread City 2021',
+        description: "The world's largest Gingerbread Town can be found at the Xhibition shopping center, right in the center of Bergen.",
+        dateLabel: '13 - 31 DEC',
+        time: '10:00',
+        badgeColor: 'green',
+        added: false,
+      },
+    ],
+
+    nextId: 5,
+
+    openAdd() {
+      this.editIndex = null;
+      this.form = { title: '', description: '', dateLabel: '', time: '', badgeColor: 'today' };
+      this.showModal = true;
+    },
+
+    openEdit(i) {
+      this.editIndex = i;
+      const ev = this.events[i];
+      this.form = {
+        title: ev.title,
+        description: ev.description,
+        dateLabel: ev.dateLabel,
+        time: ev.time,
+        badgeColor: ev.badgeColor,
+      };
+      this.showModal = true;
+    },
+
+    saveEvent() {
+      if (!this.form.title.trim()) return;
+      if (this.editIndex === null) {
+        this.events.push({
+          id: this.nextId++,
+          ...this.form,
+          added: false,
+        });
+      } else {
+        const ev = this.events[this.editIndex];
+        Object.assign(ev, this.form);
+      }
+      this.showModal = false;
+    },
+
+    deleteEvent(i) {
+      this.events.splice(i, 1);
+    },
+  };
+}
+</script>
+</body>
+</html>
