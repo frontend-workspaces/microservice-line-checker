@@ -23,6 +23,8 @@ async function writeData(data) {
   await fs.writeFile(FILE_PATH, JSON.stringify(data, null, 2), 'utf8')
 }
 
+const SEARCHABLE_FIELDS = ['brand']
+
 async function getAll(query = {}) {
   const data = await readData()
 
