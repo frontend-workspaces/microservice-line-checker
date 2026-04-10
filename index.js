@@ -3,9 +3,12 @@ const cors = require('cors')
 const path = require("path");
 require("dotenv").config();
 
+const connectMongoDB = require('./services/mongo')
+
 // Import routes
 const lineRoutes = require("./routes/lineRoutes");
 const dataRoutes = require('./routes/dataRoutes')
+const brandRoutes = require('./routes/brandRoutes')
 
 const app = express();
 const PORT = 3000;
@@ -31,7 +34,10 @@ app.use(express.static(path.join(__dirname, "app")));
 
 app.use("/api/checker", lineRoutes);
 app.use('/api/data', dataRoutes)
+app.use('/api/brand', brandRoutes)
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+connectMongoDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 });

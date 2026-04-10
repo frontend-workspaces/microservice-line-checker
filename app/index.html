@@ -121,7 +121,7 @@
               <span class="flex items-center gap-1.5 bg-[#d6eef2] text-[#1a4a58] rounded-full px-3.5 py-1 text-xs font-medium">
                 <span x-text="idObj.label"></span>
                 <!-- status dot -->
-                <span :class="idObj.status==='active' ? 'bg-green-400' : 'bg-red-400'" class="w-1.5 h-1.5 rounded-full inline-block"></span>
+                <span :class="idObj.status==='ACTIVE' ? 'bg-green-400' : 'bg-red-400'" class="w-1.5 h-1.5 rounded-full inline-block"></span>
               </span>
             </template>
             <template x-if="!brand.ids || brand.ids.length === 0">
@@ -271,7 +271,7 @@
                 type="text" x-model="row.label" :placeholder="'@labelID'+(ri+1)"
                 class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#1a2340] bg-[#e3e6ec] outline-none focus:border-[#1a2340] focus:bg-white transition-all"
               />
-              <div class="flex gap-1">
+              <!-- <div class="flex gap-1">
                 <button
                   @click="row.status='active'"
                   :class="row.status==='active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400 opacity-50'"
@@ -282,13 +282,13 @@
                   :class="row.status==='block' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-400 opacity-50'"
                   class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all"
                 >Block</button>
-              </div>
+              </div> -->
               <button @click="idForm.rows.splice(ri,1)" class="text-gray-400 hover:text-red-500 text-lg leading-none transition-colors pl-1">×</button>
             </div>
           </template>
         </div>
         <button
-          @click="idForm.rows.push({uid:Date.now()+Math.random(),label:'',status:'active'})"
+          @click="idForm.rows.push({uid:Date.now()+Math.random(),label:'',status:'ACTIVE'})"
           class="mt-3 w-full border border-dashed border-gray-300 rounded-lg py-2 text-xs text-gray-400 hover:bg-gray-50 hover:text-[#1a2340] transition-colors font-medium"
         >+ Add another ID</button>
         <p class="text-xs text-red-600 mt-2" x-show="formError" x-text="formError"></p>
@@ -340,7 +340,8 @@
 </div><!-- /app -->
 
 <script>
-const BASE = 'https://microservice-line-checker.vercel.app'
+// const BASE = 'https://microservice-line-checker.vercel.app'
+const BASE = 'http://localhost:3000'
 
 function statusApp() {
   return {
@@ -370,8 +371,8 @@ function statusApp() {
     init() { this.fetchBrands(1) },
 
     /* ══ helpers ══ */
-    countActive(b) { return (b.ids||[]).filter(i=>i.status==='active').length },
-    countBlock(b)  { return (b.ids||[]).filter(i=>i.status==='block').length  },
+    countActive(b) { return (b.ids||[]).filter(i=>i.status==='ACTIVE').length },
+    countBlock(b)  { return (b.ids||[]).filter(i=>i.status==='SUSPENDED').length  },
 
     showToast(msg, type='success') {
       clearTimeout(this.toast._t)
@@ -388,7 +389,7 @@ function statusApp() {
           params.set('key',   this.search.key.trim())
           params.set('field', this.search.field)
         }
-        const res = await fetch(`${BASE}/api/data?${params}`)
+        const res = await fetch(`${BASE}/api/brand?${params}`)
         if (!res.ok) throw new Error(`Server error ${res.status}`)
         const json = await res.json()
 
@@ -412,7 +413,7 @@ function statusApp() {
 
     /* ══ API: fetch single (for edit pre-fill) ══ */
     async fetchOne(id) {
-      const res = await fetch(`${BASE}/api/data/${id}`)
+      const res = await fetch(`${BASE}/api/brand/${id}`)
       if (!res.ok) throw new Error(`Server error ${res.status}`)
       return res.json()
     },
@@ -433,21 +434,21 @@ function statusApp() {
       this.editTarget = brand
       this.brandForm  = {
         brand: brand.brand,
-        ids:   (brand.ids||[]).map(i=>({label:i.label,status:i.status||'active'}))
+        ids:   (brand.ids||[]).map(i=>({label:i.label,status:i.status||'ACTIVE'}))
       }
       try {
         const fresh = await this.fetchOne(brand._id||brand.id)
         this.editTarget = fresh
         this.brandForm  = {
           brand: fresh.brand,
-          ids:   (fresh.ids||[]).map(i=>({label:i.label,status:i.status||'active'}))
+          ids:   (fresh.ids||[]).map(i=>({label:i.label,status:i.status||'ACTIVE'}))
         }
       } catch { /* keep optimistic */ }
     },
     addTag() {
       const val = this.tagInputVal.replace(/,/g,'').trim()
       if (val && !this.brandForm.ids.find(t=>t.label===val))
-        this.brandForm.ids.push({ label: val, status: 'active' })
+        this.brandForm.ids.push({ label: val, status: 'ACTIVE' })
       this.tagInputVal = ''
     },
     async saveBrand() {
@@ -462,13 +463,13 @@ function statusApp() {
         let res
         if (this.editTarget) {
           const id = this.editTarget._id || this.editTarget.id
-          res = await fetch(`${BASE}/api/data/${id}`, {
+          res = await fetch(`${BASE}/api/brand/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           })
         } else {
-          res = await fetch(`${BASE}/api/data`, {
+          res = await fetch(`${BASE}/api/brand`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -497,7 +498,7 @@ function statusApp() {
       this.loading.save = 'del'
       try {
         const id  = this.deleteTarget._id || this.deleteTarget.id
-        const res = await fetch(`${BASE}/api/data/${id}`, { method: 'DELETE' })
+        const res = await fetch(`${BASE}/api/brand/${id}`, { method: 'DELETE' })
         if (!res.ok) throw new Error(`Server error ${res.status}`)
         this.modal.del = false
         this.showToast('Brand deleted.', 'success')
@@ -516,7 +517,7 @@ function statusApp() {
     /* ══ ID modal ══ */
     openAddId(brand) {
       this.idTarget  = brand
-      this.idForm    = { rows: (brand.ids||[]).map(i=>({ uid: i._id||i.id||Math.random(), label: i.label, status: i.status||'active' })) }
+      this.idForm    = { rows: (brand.ids||[]).map(i=>({ uid: i._id||i.id||Math.random(), label: i.label, status: i.status||'ACTIVE' })) }
       this.formError = ''
       this.modal.id  = true
     },
@@ -530,7 +531,7 @@ function statusApp() {
           brand: this.idTarget.brand,
           ids:   this.idForm.rows.filter(r=>r.label.trim()).map(r=>({ label: r.label.trim(), status: r.status }))
         }
-        const res = await fetch(`${BASE}/api/data/${id}`, {
+        const res = await fetch(`${BASE}/api/brand/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
