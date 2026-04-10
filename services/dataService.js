@@ -1,10 +1,10 @@
 const fs = require('fs/promises')
 const path = require('path')
 
-const FILE_PATH = path.join(__dirname, '..', 'data.json')
-
-// fields allowed for search
-const SEARCHABLE_FIELDS = ['brand']
+const FILE_PATH =
+  process.env.NODE_ENV === 'production'
+    ? '/tmp/data.json'
+    : path.join(__dirname, '..', 'data.json')
 
 async function readData() {
   try {
