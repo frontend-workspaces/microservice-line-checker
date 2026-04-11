@@ -124,66 +124,43 @@ async function checkLineId(lineId) {
   };
 }
 
-function buildSummary(results) {
-  const summary = {
-    ACTIVE: 0,
-    SUSPENDED: 0,
-    NOT_FOUND: 0,
-    UNKNOWN: 0,
-    ERROR: 0,
-  };
-
-  for (const item of results) {
-    if (summary[item.status] !== undefined) {
-      summary[item.status]++;
-    } else {
-      summary.UNKNOWN++;
-    }
-  }
-
-  return summary;
+function getStatusEmoji(status) {
+  if (status === 'ACTIVE') return '🟢'
+  if (status === 'SUSPENDED') return '🔴'
+  if (status === 'NOT_FOUND') return '🟠'
+  return '⚪'
 }
 
-function getEnvLineIds() {
-  return (process.env.LINE_ID_LIST || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
+function getStatusText(status) {
+  if (status === 'ACTIVE') return 'ปกติ'
+  if (status === 'SUSPENDED') return 'ถูกระงับ'
+  if (status === 'NOT_FOUND') return 'ไม่พบข้อมูล'
+  return 'ไม่ทราบ'
 }
 
-function textResponse(lineId, status) {
-  if (status === "ACTIVE") {
-    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ 🟢 ปกติ`;
-  }
-  if (status === "SUSPENDED") {
-    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ 🔴 ถูกระงับ`;
-  }
-  if (status === "UNKNOWN") {
-    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ ⚪ ไม่ทราบ`;
-  }
-  if (status === "NOT_FOUND") {
-    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ 🟠 ไม่พบข้อมูล`;
+function buildBrandHealthMessage(brand, ids = []) {
+  const lines = [
+    `<b>LINE CHECKER</b> - ${brand}`,
+    `━━━━━━━━━━━━━━━━`
+  ]
+
+  for (const item of ids) {
+    const url = `https://line.me/R/ti/p/${item.label}`;
+    lines.push(
+      `${getStatusEmoji(item.status)} <b><a href="${url}">${item.label}</a></b> (${getStatusText(item.status)})`
+    )
   }
 
-  return `สถานะ LINE ID ${lineId}: ${status}`;
+  return lines.join('\n')
 }
 
-async function sendLineStatusesToTelegram(lineIds) {
-  for (const id of lineIds) {
-    try {
-      const result = await checkLineId(id);
-      await sendTelegramNotice({
-        text: textResponse(result.lineId, result.status),
-      });
-    } catch (error) {
-      console.log("ERROR checkLineId:", error);
-    }
-  }
+async function sendBrandStatusesToTelegram(brand, ids) {
+  const text = buildBrandHealthMessage(brand, ids)
+  await sendTelegramNotice({ text })
 }
 
 module.exports = {
   checkLineId,
-  buildSummary,
-  getEnvLineIds,
-  sendLineStatusesToTelegram,
-};
+  sendBrandStatusesToTelegram,
+  buildBrandHealthMessage
+}

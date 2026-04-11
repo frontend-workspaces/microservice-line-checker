@@ -3,7 +3,10 @@ const {
   buildSummary,
   getEnvLineIds,
   sendLineStatusesToTelegram,
+  sendBrandStatusesToTelegram
 } = require("../services/lineService");
+
+const Brand = require('../models/Brand')
 
 async function healthCheck(req, res) {
   return res.json({
@@ -122,9 +125,70 @@ async function checkLineStatus(req, res) {
   }
 }
 
+async function checkLineStatusDB(req, res) {
+  console.log('[/check-line-status-db]')
+
+  try {
+    const brands = await Brand.find({}).select('-__v')
+
+    if (!brands.length) {
+      return res.status(404).json({
+        ok: false,
+        message: 'No brand data found'
+      })
+    }
+
+    const updatedBrands = []
+
+    for (const brandDoc of brands) {
+      const updatedIds = []
+
+      for (const item of brandDoc.ids) {
+        try {
+          const result = await checkLineId(item.label)
+
+          updatedIds.push({
+            label: item.label,
+            status: result.status
+          })
+        } catch (error) {
+          updatedIds.push({
+            label: item.label,
+            status: 'UNKNOWN'
+          })
+        }
+      }
+
+      brandDoc.ids = updatedIds
+      await brandDoc.save()
+
+      await sendBrandStatusesToTelegram(brandDoc.brand, updatedIds)
+
+      updatedBrands.push({
+        id: brandDoc.id,
+        brand: brandDoc.brand,
+        ids: updatedIds
+      })
+    }
+
+    return res.json({
+      ok: true,
+      totalBrands: updatedBrands.length,
+      data: updatedBrands
+    })
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      message: 'Failed to check LINE status from DB',
+      error: error.message
+    })
+  }
+}
+
 module.exports = {
   healthCheck,
   checkSingleLine,
   checkLineList,
   checkLineStatus,
+  checkLineStatusDB
 };

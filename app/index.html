@@ -1,277 +1,474 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Status Checker</title>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { serif: ['"DM Serif Display"','serif'], sans: ['"DM Sans"','sans-serif'] },
-          keyframes: {
-            slideIn: { from:{opacity:0,transform:'translateY(10px)'}, to:{opacity:1,transform:'translateY(0)'} },
-            popIn:   { from:{opacity:0,transform:'scale(0.92) translateY(12px)'}, to:{opacity:1,transform:'scale(1) translateY(0)'} },
-            fadeIn:  { from:{opacity:0}, to:{opacity:1} },
-            spin:    { to:{transform:'rotate(360deg)'} },
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Status Checker</title>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              serif: ['"DM Serif Display"', "serif"],
+              sans: ['"DM Sans"', "sans-serif"],
+            },
+            keyframes: {
+              slideIn: {
+                from: { opacity: 0, transform: "translateY(10px)" },
+                to: { opacity: 1, transform: "translateY(0)" },
+              },
+              popIn: {
+                from: { opacity: 0, transform: "scale(0.92) translateY(12px)" },
+                to: { opacity: 1, transform: "scale(1) translateY(0)" },
+              },
+              fadeIn: { from: { opacity: 0 }, to: { opacity: 1 } },
+              spin: { to: { transform: "rotate(360deg)" } },
+            },
+            animation: {
+              slideIn: "slideIn 0.28s ease both",
+              popIn: "popIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both",
+              fadeIn: "fadeIn 0.2s ease",
+              spin: "spin 0.8s linear infinite",
+            },
           },
-          animation: {
-            slideIn: 'slideIn 0.28s ease both',
-            popIn:   'popIn 0.25s cubic-bezier(0.34,1.56,0.64,1) both',
-            fadeIn:  'fadeIn 0.2s ease',
-            spin:    'spin 0.8s linear infinite',
-          }
-        }
+        },
+      };
+    </script>
+    <style>
+      [x-cloak] {
+        display: none !important;
       }
-    }
-  </script>
-  <style>[x-cloak]{display:none!important} body{font-family:'DM Sans',sans-serif}</style>
-</head>
-<body class="bg-[#e3e6ec] min-h-screen px-5 py-12 text-[#1a2340]">
-<div class="max-w-4xl mx-auto" x-data="statusApp()">
+      body {
+        font-family: "Kanit", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-[#e3e6ec] min-h-screen px-5 py-6 text-[#1a2340]">
+    <div class="max-w-7xl mx-auto" x-data="statusApp()">
+      <!-- ── Toast ── -->
+      <div
+        x-show="toast.show"
+        x-cloak
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        :class="toast.type==='error' ? 'bg-red-600' : 'bg-green-600'"
+        class="fixed top-5 right-5 z-[999] text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg flex items-center gap-2"
+      >
+        <span
+          x-text="toast.type==='error' ? '✕' : '✓'"
+          class="font-bold"
+        ></span>
+        <span x-text="toast.msg"></span>
+      </div>
 
-  <!-- ── Toast ── -->
-  <div
-    x-show="toast.show" x-cloak
-    x-transition:enter="transition ease-out duration-300"
-    x-transition:enter-start="opacity-0 translate-y-2"
-    x-transition:enter-end="opacity-100 translate-y-0"
-    x-transition:leave="transition ease-in duration-200"
-    x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0"
-    :class="toast.type==='error' ? 'bg-red-600' : 'bg-green-600'"
-    class="fixed top-5 right-5 z-[999] text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg flex items-center gap-2"
-  >
-    <span x-text="toast.type==='error' ? '✕' : '✓'" class="font-bold"></span>
-    <span x-text="toast.msg"></span>
-  </div>
+      <!-- ── Header ── -->
+      <div class="flex items-center justify-between md:mb-7 mb-4">
+        <h1 class="text-4xl font-bold tracking-tight">Status Checker</h1>
+        <div class="flex items-center gap-3">
+          <!-- Search -->
+          <div class="relative">
+            <input
+              type="text"
+              x-model="search.key"
+              @keydown.enter="fetchBrands(1)"
+              placeholder="Search brand…"
+              class="border border-gray-200 rounded-full pl-4 pr-10 py-2 text-sm bg-white outline-none focus:border-[#1a2340] transition-all w-44"
+            />
+            <button
+              @click="fetchBrands(1)"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1a2340]"
+            >
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                <circle
+                  cx="8.5"
+                  cy="8.5"
+                  r="5.5"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+                <path
+                  d="M13 13l3.5 3.5"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+          <button
+            @click="openAddBrand()"
+            class="flex items-center gap-2 bg-[#1a2340] text-white rounded-full px-5 py-2.5 text-sm font-medium hover:bg-[#2d3a5e] transition-all hover:-translate-y-0.5 shadow-sm"
+          >
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M7 1v12M1 7h12"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              />
+            </svg>
+            Add Brand
+          </button>
+        </div>
+      </div>
 
-  <!-- ── Header ── -->
-  <div class="flex items-center justify-between mb-7">
-    <h1 style="font-family:'DM Serif Display',serif" class="text-4xl font-bold tracking-tight">Status Checker</h1>
-    <div class="flex items-center gap-3">
-      <!-- Search -->
-      <div class="relative">
-        <input
-          type="text" x-model="search.key"
-          @keydown.enter="fetchBrands(1)"
-          placeholder="Search brand…"
-          class="border border-gray-200 rounded-full pl-4 pr-10 py-2 text-sm bg-white outline-none focus:border-[#1a2340] transition-all w-44"
-        />
-        <button @click="fetchBrands(1)" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1a2340]">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <!-- ── Global loader ── -->
+      <div x-show="loading.list" class="flex justify-center py-20">
+        <div
+          class="w-8 h-8 border-4 border-[#1a2340] border-t-transparent rounded-full animate-spin"
+        ></div>
+      </div>
+
+      <!-- ── Error banner ── -->
+      <div
+        x-show="listError && !loading.list"
+        class="bg-red-50 border border-red-200 text-red-700 rounded-xl px-5 py-4 text-sm mb-4 flex items-center gap-3"
+      >
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+          <circle
+            cx="10"
+            cy="10"
+            r="8"
+            stroke="currentColor"
+            stroke-width="1.8"
+          />
+          <path
+            d="M10 6v4M10 13v1"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span x-text="listError"></span>
+        <button
+          @click="fetchBrands(pagination.page)"
+          class="ml-auto underline font-medium hover:no-underline"
+        >
+          Retry
         </button>
       </div>
-      <button
-        @click="openAddBrand()"
-        class="flex items-center gap-2 bg-[#1a2340] text-white rounded-full px-5 py-2.5 text-sm font-medium hover:bg-[#2d3a5e] transition-all hover:-translate-y-0.5 shadow-sm"
+
+      <!-- ── Brand list ── -->
+      <div x-show="!loading.list" :class="brands.length === 0 ? 'flex flex-col' : 'grid  md:grid-cols-2 grid-cols-1 gap-2'">
+        <template x-if="brands.length === 0 && !listError">
+          <div class="text-center py-16 text-gray-400">
+            <div class="text-4xl mb-3">🏷️</div>
+            <p class="text-sm">
+              No brands found. Click "Add Brand" to get started.
+            </p>
+          </div>
+        </template>
+
+        <template x-for="brand in brands" :key="brand._id || brand.id">
+          <div
+            class="bg-white rounded-2xl shadow-sm flex items-stretch overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 animate-slideIn"
+          >
+            <!-- Summary panel -->
+            <div
+              class="md:w-36 w-[6rem] flex-shrink-0 bg-[#eceef4] rounded-xl m-3 flex flex-col items-center justify-center gap-2.5 py-2 px-2 text-center"
+            >
+              <p
+                class="text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e]"
+              >
+                Total <span x-text="(brand.ids||[]).length"></span> IDs
+              </p>
+              <div class="flex w-full gap-2">
+                <span
+                  class="w-full text-center rounded-lg py-1.5 text-xs font-semibold bg-green-100 text-green-800"
+                >
+                  A <span x-text="countActive(brand)"></span>
+                </span>
+                <span
+                  class="w-full text-center rounded-lg py-1.5 text-xs font-semibold bg-red-100 text-red-800"
+                >
+                  S <span x-text="countBlock(brand)"></span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 py-5 px-4 flex flex-col gap-3">
+              <div
+                class="text-lg text-[#1a2340]"
+                x-text="'Brand: ' + brand.brand"
+              ></div>
+              <div class="flex flex-wrap gap-2">
+                <template
+                  x-for="(idObj, ii) in (brand.ids||[])"
+                  :key="idObj._id || idObj.id || ii"
+                >
+                  <span
+                    class="flex items-center gap-1.5 bg-[#d6eef2] text-[#1a4a58] rounded-full px-3.5 py-1 text-xs font-medium"
+                  >
+                    <span x-text="idObj.label"></span>
+                    <!-- status dot -->
+                    <span
+                      :class="[
+    idObj.status === 'ACTIVE' ? 'bg-green-400' :
+    idObj.status === 'SUSPENDED' ? 'bg-red-400' :
+    idObj.status === 'NOT_FOUND' ? 'bg-orange-400' :
+    'bg-white border border-gray-300',
+    'w-1.5 h-1.5 rounded-full inline-block'
+  ]"
+                    ></span>
+                    <!-- <span :class="idObj.status==='ACTIVE' ? 'bg-green-400' : 'bg-red-400'" class="w-1.5 h-1.5 rounded-full inline-block"></span> -->
+                  </span>
+                </template>
+                <template x-if="!brand.ids || brand.ids.length === 0">
+                  <span class="text-xs text-gray-400 italic">No IDs yet</span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div
+              class="flex-shrink-0 flex flex-col items-end justify-between py-5 px-4"
+            >
+              <button
+                @click="openAddId(brand)"
+                class="border border-gray-200 text-[#1a2340] text-xs font-medium rounded-full px-4 py-2 hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                + Add ID
+              </button>
+              <div class="flex gap-1 items-center">
+                <!-- inline spinner when saving this card -->
+                <div
+                  x-show="loading.save === (brand._id||brand.id)"
+                  class="w-4 h-4 border-2 border-[#1a2340] border-t-transparent rounded-full animate-spin mr-1"
+                ></div>
+                <button
+                  @click="openEditBrand(brand)"
+                  class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-[#1a2340] transition-colors"
+                  title="Edit"
+                >
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M14.7 3.3a1 1 0 011.4 1.4l-9.9 9.9-2.1.7.7-2.1 9.9-9.9z"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  @click="confirmDelete(brand)"
+                  class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                  title="Delete"
+                >
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M5 5l10 10M15 5L5 15"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- ── Pagination ── -->
+      <div
+        x-show="!loading.list && pagination.totalPages > 1"
+        class="flex items-center justify-center gap-2 mt-8"
       >
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        Add Brand
-      </button>
-    </div>
-  </div>
+        <button
+          @click="fetchBrands(pagination.page - 1)"
+          :disabled="pagination.page <= 1"
+          class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <path
+              d="M13 5l-6 5 6 5"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
 
-  <!-- ── Global loader ── -->
-  <div x-show="loading.list" class="flex justify-center py-20">
-    <div class="w-8 h-8 border-4 border-[#1a2340] border-t-transparent rounded-full animate-spin"></div>
-  </div>
-
-  <!-- ── Error banner ── -->
-  <div x-show="listError && !loading.list" class="bg-red-50 border border-red-200 text-red-700 rounded-xl px-5 py-4 text-sm mb-4 flex items-center gap-3">
-    <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M10 6v4M10 13v1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <span x-text="listError"></span>
-    <button @click="fetchBrands(pagination.page)" class="ml-auto underline font-medium hover:no-underline">Retry</button>
-  </div>
-
-  <!-- ── Brand list ── -->
-  <div x-show="!loading.list" class="flex flex-col gap-3.5">
-
-    <template x-if="brands.length === 0 && !listError">
-      <div class="text-center py-16 text-gray-400">
-        <div class="text-4xl mb-3">🏷️</div>
-        <p class="text-sm">No brands found. Click "Add Brand" to get started.</p>
-      </div>
-    </template>
-
-    <template x-for="brand in brands" :key="brand._id || brand.id">
-      <div class="bg-white rounded-2xl shadow-sm flex items-stretch overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 animate-slideIn">
-
-        <!-- Summary panel -->
-        <div class="w-36 flex-shrink-0 bg-[#eceef4] rounded-xl m-3.5 flex flex-col items-center justify-center gap-2.5 py-5 px-3 text-center">
-          <p class="text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e]">
-            Total <span x-text="(brand.ids||[]).length"></span> IDs
-          </p>
-          <span class="w-full text-center rounded-lg py-1.5 text-xs font-semibold bg-green-100 text-green-800">
-            Active <span x-text="countActive(brand)"></span>
-          </span>
-          <span class="w-full text-center rounded-lg py-1.5 text-xs font-semibold bg-red-100 text-red-800">
-            Block <span x-text="countBlock(brand)"></span>
-          </span>
-        </div>
-
-        <!-- Body -->
-        <div class="flex-1 py-5 px-4 flex flex-col gap-3 justify-center">
-          <div style="font-family:'DM Serif Display',serif" class="text-lg text-[#1a2340]" x-text="'Brand: ' + brand.brand"></div>
-          <div class="flex flex-wrap gap-2">
-            <template x-for="(idObj, ii) in (brand.ids||[])" :key="idObj._id || idObj.id || ii">
-              <span class="flex items-center gap-1.5 bg-[#d6eef2] text-[#1a4a58] rounded-full px-3.5 py-1 text-xs font-medium">
-                <span x-text="idObj.label"></span>
-                <!-- status dot -->
-                <span :class="idObj.status==='ACTIVE' ? 'bg-green-400' : 'bg-red-400'" class="w-1.5 h-1.5 rounded-full inline-block"></span>
-              </span>
-            </template>
-            <template x-if="!brand.ids || brand.ids.length === 0">
-              <span class="text-xs text-gray-400 italic">No IDs yet</span>
-            </template>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="flex-shrink-0 flex flex-col items-end justify-between py-5 px-4">
+        <template x-for="p in pagination.totalPages" :key="p">
           <button
-            @click="openAddId(brand)"
-            class="border border-gray-200 text-[#1a2340] text-xs font-medium rounded-full px-4 py-2 hover:bg-gray-50 transition-colors whitespace-nowrap"
-          >+ Add ID</button>
-          <div class="flex gap-1 items-center">
-            <!-- inline spinner when saving this card -->
-            <div x-show="loading.save === (brand._id||brand.id)" class="w-4 h-4 border-2 border-[#1a2340] border-t-transparent rounded-full animate-spin mr-1"></div>
-            <button @click="openEditBrand(brand)" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-[#1a2340] transition-colors" title="Edit">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M14.7 3.3a1 1 0 011.4 1.4l-9.9 9.9-2.1.7.7-2.1 9.9-9.9z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-            </button>
-            <button @click="confirmDelete(brand)" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors" title="Delete">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            </button>
-          </div>
-        </div>
+            @click="fetchBrands(p)"
+            :class="p === pagination.page ? 'bg-[#1a2340] text-white border-[#1a2340]' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'"
+            class="w-8 h-8 flex items-center justify-center rounded-lg border text-sm font-medium transition-colors"
+            x-text="p"
+          ></button>
+        </template>
 
+        <button
+          @click="fetchBrands(pagination.page + 1)"
+          :disabled="pagination.page >= pagination.totalPages"
+          class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+            <path
+              d="M7 5l6 5-6 5"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+
+        <span class="text-xs text-gray-400 ml-2">
+          Page <span x-text="pagination.page"></span> of
+          <span x-text="pagination.totalPages"></span> &nbsp;·&nbsp;
+          <span x-text="pagination.total"></span> total
+        </span>
       </div>
-    </template>
-  </div>
 
-  <!-- ── Pagination ── -->
-  <div x-show="!loading.list && pagination.totalPages > 1" class="flex items-center justify-center gap-2 mt-8">
-    <button
-      @click="fetchBrands(pagination.page - 1)"
-      :disabled="pagination.page <= 1"
-      class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-    >
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M13 5l-6 5 6 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-
-    <template x-for="p in pagination.totalPages" :key="p">
-      <button
-        @click="fetchBrands(p)"
-        :class="p === pagination.page ? 'bg-[#1a2340] text-white border-[#1a2340]' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'"
-        class="w-8 h-8 flex items-center justify-center rounded-lg border text-sm font-medium transition-colors"
-        x-text="p"
-      ></button>
-    </template>
-
-    <button
-      @click="fetchBrands(pagination.page + 1)"
-      :disabled="pagination.page >= pagination.totalPages"
-      class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-    >
-      <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M7 5l6 5-6 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </button>
-
-    <span class="text-xs text-gray-400 ml-2">
-      Page <span x-text="pagination.page"></span> of <span x-text="pagination.totalPages"></span>
-      &nbsp;·&nbsp; <span x-text="pagination.total"></span> total
-    </span>
-  </div>
-
-
-  <!-- ══════════════════════════════════════
+      <!-- ══════════════════════════════════════
        MODAL: Add / Edit Brand
   ══════════════════════════════════════ -->
-  <div
-    x-show="modal.brand" x-cloak
-    class="fixed inset-0 bg-[#1a2340]/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
-    @click.self="modal.brand = false"
-  >
-    <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl animate-popIn" @click.stop>
-      <h2 style="font-family:'DM Serif Display',serif" class="text-2xl text-[#1a2340] mb-6"
-        x-text="editTarget ? 'Edit Brand' : 'New Brand'"></h2>
-
-      <!-- Brand name -->
-      <div class="mb-5">
-        <label class="block text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e] mb-1.5">Brand Name</label>
-        <input
-          type="text" x-model="brandForm.brand" placeholder="e.g. Toyota"
-          @keydown.enter="saveBrand()"
-          class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#1a2340] bg-[#e3e6ec] outline-none focus:border-[#1a2340] focus:bg-white transition-all"
-        />
-      </div>
-
-      <!-- Tag-style IDs -->
-      <div class="mb-2">
-        <label class="block text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e] mb-1.5">IDs</label>
+      <div
+        x-show="modal.brand"
+        x-cloak
+        class="fixed inset-0 bg-[#1a2340]/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
+        @click.self="modal.brand = false"
+      >
         <div
-          class="border border-gray-200 rounded-xl px-3 py-2.5 bg-[#e3e6ec] flex flex-wrap gap-2 min-h-[48px] cursor-text focus-within:border-[#1a2340] focus-within:bg-white transition-all"
-          @click="$refs.tagInput.focus()"
+          class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl animate-popIn"
+          @click.stop
         >
-          <template x-for="(tag, ti) in brandForm.ids" :key="ti">
-            <span class="flex items-center gap-1.5 bg-[#d6eef2] text-[#1a4a58] rounded-full px-3 py-0.5 text-xs font-medium">
-              <span x-text="tag.label"></span>
-              <button @click="brandForm.ids.splice(ti,1)" class="opacity-50 hover:opacity-100 hover:text-red-600 text-base leading-none transition-opacity">×</button>
-            </span>
-          </template>
-          <input
-            x-ref="tagInput" x-model="tagInputVal"
-            placeholder="Type ID then Enter or comma…"
-            @keydown.enter.prevent="addTag()"
-            @keydown.188.prevent="addTag()"
-            @keydown.backspace="tagInputVal===''&&brandForm.ids.pop()"
-            class="flex-1 min-w-[130px] bg-transparent text-sm text-[#1a2340] outline-none placeholder-gray-400"
-          />
+          <h2
+            class="text-2xl text-[#1a2340] mb-6"
+            x-text="editTarget ? 'Edit Brand' : 'New Brand'"
+          ></h2>
+
+          <!-- Brand name -->
+          <div class="mb-5">
+            <label
+              class="block text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e] mb-1.5"
+              >Brand Name</label
+            >
+            <input
+              type="text"
+              x-model="brandForm.brand"
+              placeholder="Input Brand"
+              @keydown.enter="saveBrand()"
+              class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-[#1a2340] bg-[#e3e6ec] outline-none focus:border-[#1a2340] focus:bg-white transition-all"
+            />
+          </div>
+
+          <!-- Tag-style IDs -->
+          <div class="mb-2">
+            <label
+              class="block text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e] mb-1.5"
+              >IDs</label
+            >
+            <div
+              class="border border-gray-200 rounded-xl px-3 py-2.5 bg-[#e3e6ec] flex flex-wrap gap-2 min-h-[48px] cursor-text focus-within:border-[#1a2340] focus-within:bg-white transition-all"
+              @click="$refs.tagInput.focus()"
+            >
+              <template x-for="(tag, ti) in brandForm.ids" :key="ti">
+                <span
+                  class="flex items-center gap-1.5 bg-[#d6eef2] text-[#1a4a58] rounded-full px-3 py-0.5 text-xs font-medium"
+                >
+                  <span x-text="tag.label"></span>
+                  <button
+                    @click="brandForm.ids.splice(ti,1)"
+                    class="opacity-50 hover:opacity-100 hover:text-red-600 text-base leading-none transition-opacity"
+                  >
+                    ×
+                  </button>
+                </span>
+              </template>
+              <input
+                x-ref="tagInput"
+                x-model="tagInputVal"
+                placeholder="Type ID then Enter or comma…"
+                @keydown.enter.prevent="addTag()"
+                @keydown.188.prevent="addTag()"
+                @keydown.backspace="tagInputVal===''&&brandForm.ids.pop()"
+                class="flex-1 min-w-[130px] bg-transparent text-sm text-[#1a2340] outline-none placeholder-gray-400"
+              />
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1">
+              Press <strong>Enter</strong> or <strong>,</strong> to add each ID
+            </p>
+          </div>
+
+          <p
+            class="text-xs text-red-600 mb-2"
+            x-show="formError"
+            x-text="formError"
+          ></p>
+
+          <div class="flex justify-end gap-2.5 mt-6">
+            <button
+              @click="modal.brand=false"
+              class="bg-gray-100 text-[#1a2340] rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="saveBrand()"
+              :disabled="loading.save==='brand'"
+              class="bg-[#1a2340] text-white rounded-full px-6 py-2 text-sm font-medium hover:bg-[#2d3a5e] transition-colors disabled:opacity-60 flex items-center gap-2"
+            >
+              <div
+                x-show="loading.save==='brand'"
+                class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"
+              ></div>
+              <span x-text="editTarget ? 'Save Changes' : 'Add Brand'"></span>
+            </button>
+          </div>
         </div>
-        <p class="text-[11px] text-gray-400 mt-1">Press <strong>Enter</strong> or <strong>,</strong> to add each ID</p>
       </div>
 
-      <p class="text-xs text-red-600 mb-2" x-show="formError" x-text="formError"></p>
-
-      <div class="flex justify-end gap-2.5 mt-6">
-        <button @click="modal.brand=false" class="bg-gray-100 text-[#1a2340] rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-200 transition-colors">Cancel</button>
-        <button
-          @click="saveBrand()"
-          :disabled="loading.save==='brand'"
-          class="bg-[#1a2340] text-white rounded-full px-6 py-2 text-sm font-medium hover:bg-[#2d3a5e] transition-colors disabled:opacity-60 flex items-center gap-2"
-        >
-          <div x-show="loading.save==='brand'" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          <span x-text="editTarget ? 'Save Changes' : 'Add Brand'"></span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ══════════════════════════════════════
+      <!-- ══════════════════════════════════════
        MODAL: Manage IDs
   ══════════════════════════════════════ -->
-  <div
-    x-show="modal.id" x-cloak
-    class="fixed inset-0 bg-[#1a2340]/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
-    @click.self="modal.id=false"
-  >
-    <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl animate-popIn" @click.stop>
-      <h2 style="font-family:'DM Serif Display',serif" class="text-2xl text-[#1a2340] mb-1">Manage IDs</h2>
-      <p class="text-sm text-gray-400 mb-6" x-text="idTarget ? '— ' + idTarget.brand : ''"></p>
+      <div
+        x-show="modal.id"
+        x-cloak
+        class="fixed inset-0 bg-[#1a2340]/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
+        @click.self="modal.id=false"
+      >
+        <div
+          class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl animate-popIn"
+          @click.stop
+        >
+          <h2 class="text-2xl text-[#1a2340] mb-1">Manage IDs</h2>
+          <p
+            class="text-sm text-gray-400 mb-6"
+            x-text="idTarget ? '— ' + idTarget.brand : ''"
+          ></p>
 
-      <div class="mb-4">
-        <label class="block text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e] mb-2">IDs</label>
-        <div class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
-          <template x-for="(row, ri) in idForm.rows" :key="row.uid">
-            <div class="flex items-center gap-2">
-              <input
-                type="text" x-model="row.label" :placeholder="'@labelID'+(ri+1)"
-                class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#1a2340] bg-[#e3e6ec] outline-none focus:border-[#1a2340] focus:bg-white transition-all"
-              />
-              <!-- <div class="flex gap-1">
+          <div class="mb-4">
+            <label
+              class="block text-[10px] font-bold tracking-widest uppercase text-[#2d3a5e] mb-2"
+              >IDs</label
+            >
+            <div class="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+              <template x-for="(row, ri) in idForm.rows" :key="row.uid">
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    x-model="row.label"
+                    :placeholder="'@labelID'+(ri+1)"
+                    class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#1a2340] bg-[#e3e6ec] outline-none focus:border-[#1a2340] focus:bg-white transition-all"
+                  />
+                  <!-- <div class="flex gap-1">
                 <button
                   @click="row.status='active'"
                   :class="row.status==='active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-400 opacity-50'"
@@ -283,274 +480,353 @@
                   class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all"
                 >Block</button>
               </div> -->
-              <button @click="idForm.rows.splice(ri,1)" class="text-gray-400 hover:text-red-500 text-lg leading-none transition-colors pl-1">×</button>
+                  <button
+                    @click="idForm.rows.splice(ri,1)"
+                    class="text-gray-400 hover:text-red-500 text-lg leading-none transition-colors pl-1"
+                  >
+                    ×
+                  </button>
+                </div>
+              </template>
             </div>
-          </template>
+            <button
+              @click="idForm.rows.push({uid:Date.now()+Math.random(),label:'',status:'ACTIVE'})"
+              class="mt-3 w-full border border-dashed border-gray-300 rounded-lg py-2 text-xs text-gray-400 hover:bg-gray-50 hover:text-[#1a2340] transition-colors font-medium"
+            >
+              + Add another ID
+            </button>
+            <p
+              class="text-xs text-red-600 mt-2"
+              x-show="formError"
+              x-text="formError"
+            ></p>
+          </div>
+
+          <div class="flex justify-end gap-2.5 mt-6">
+            <button
+              @click="modal.id=false"
+              class="bg-gray-100 text-[#1a2340] rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="saveIds()"
+              :disabled="loading.save==='ids'"
+              class="bg-[#1a2340] text-white rounded-full px-6 py-2 text-sm font-medium hover:bg-[#2d3a5e] transition-colors disabled:opacity-60 flex items-center gap-2"
+            >
+              <div
+                x-show="loading.save==='ids'"
+                class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"
+              ></div>
+              Save IDs
+            </button>
+          </div>
         </div>
-        <button
-          @click="idForm.rows.push({uid:Date.now()+Math.random(),label:'',status:'ACTIVE'})"
-          class="mt-3 w-full border border-dashed border-gray-300 rounded-lg py-2 text-xs text-gray-400 hover:bg-gray-50 hover:text-[#1a2340] transition-colors font-medium"
-        >+ Add another ID</button>
-        <p class="text-xs text-red-600 mt-2" x-show="formError" x-text="formError"></p>
       </div>
 
-      <div class="flex justify-end gap-2.5 mt-6">
-        <button @click="modal.id=false" class="bg-gray-100 text-[#1a2340] rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-200 transition-colors">Cancel</button>
-        <button
-          @click="saveIds()"
-          :disabled="loading.save==='ids'"
-          class="bg-[#1a2340] text-white rounded-full px-6 py-2 text-sm font-medium hover:bg-[#2d3a5e] transition-colors disabled:opacity-60 flex items-center gap-2"
-        >
-          <div x-show="loading.save==='ids'" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          Save IDs
-        </button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ══════════════════════════════════════
+      <!-- ══════════════════════════════════════
        MODAL: Confirm Delete
   ══════════════════════════════════════ -->
-  <div
-    x-show="modal.del" x-cloak
-    class="fixed inset-0 bg-[#1a2340]/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
-    @click.self="modal.del=false"
-  >
-    <div class="bg-white rounded-2xl w-full max-w-sm p-8 shadow-2xl animate-popIn text-center" @click.stop>
-      <div class="text-4xl mb-3">🗑️</div>
-      <h2 style="font-family:'DM Serif Display',serif" class="text-xl text-[#1a2340] mb-2">Delete Brand?</h2>
-      <p class="text-sm text-gray-500 mb-6">
-        <strong x-text="deleteTarget?.brand"></strong> and all its IDs will be permanently removed.
-      </p>
-      <div class="flex justify-center gap-3">
-        <button @click="modal.del=false" class="bg-gray-100 text-[#1a2340] rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-200 transition-colors">Cancel</button>
-        <button
-          @click="deleteBrand()"
-          :disabled="loading.save==='del'"
-          class="bg-red-600 text-white rounded-full px-6 py-2 text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-60 flex items-center gap-2"
+      <div
+        x-show="modal.del"
+        x-cloak
+        class="fixed inset-0 bg-[#1a2340]/30 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn"
+        @click.self="modal.del=false"
+      >
+        <div
+          class="bg-white rounded-2xl w-full max-w-sm p-8 shadow-2xl animate-popIn text-center"
+          @click.stop
         >
-          <div x-show="loading.save==='del'" class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          Delete
-        </button>
+          <div class="text-4xl mb-3">🗑️</div>
+          <h2 class="text-xl text-[#1a2340] mb-2">Delete Brand?</h2>
+          <p class="text-sm text-gray-500 mb-6">
+            <strong x-text="deleteTarget?.brand"></strong> and all its IDs will
+            be permanently removed.
+          </p>
+          <div class="flex justify-center gap-3">
+            <button
+              @click="modal.del=false"
+              class="bg-gray-100 text-[#1a2340] rounded-full px-5 py-2 text-sm font-medium hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="deleteBrand()"
+              :disabled="loading.save==='del'"
+              class="bg-red-600 text-white rounded-full px-6 py-2 text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-60 flex items-center gap-2"
+            >
+              <div
+                x-show="loading.save==='del'"
+                class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"
+              ></div>
+              Delete
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
+    <!-- /app -->
 
-</div><!-- /app -->
+    <script>
+      const BASE = "https://microservice-line-checker.vercel.app";
+      // const BASE = 'http://localhost:3000'
 
-<script>
-const BASE = 'https://microservice-line-checker.vercel.app'
-// const BASE = 'http://localhost:3000'
+      function statusApp() {
+        return {
+          /* ── data ── */
+          brands: [],
+          pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
+          search: { key: "", field: "brand" },
 
-function statusApp() {
-  return {
-    /* ── data ── */
-    brands: [],
-    pagination: { page: 1, limit: 10, total: 0, totalPages: 1 },
-    search: { key: '', field: 'brand' },
+          /* ── ui state ── */
+          loading: { list: false, save: null },
+          listError: null,
+          formError: "",
+          toast: { show: false, msg: "", type: "success", _t: null },
 
-    /* ── ui state ── */
-    loading: { list: false, save: null },
-    listError: null,
-    formError: '',
-    toast: { show: false, msg: '', type: 'success', _t: null },
+          /* ── modals ── */
+          modal: { brand: false, id: false, del: false },
+          editTarget: null, // brand object being edited
+          idTarget: null, // brand whose IDs we're managing
+          deleteTarget: null,
 
-    /* ── modals ── */
-    modal: { brand: false, id: false, del: false },
-    editTarget: null,     // brand object being edited
-    idTarget:   null,     // brand whose IDs we're managing
-    deleteTarget: null,
+          /* ── forms ── */
+          brandForm: { brand: "", ids: [] },
+          tagInputVal: "",
+          idForm: { rows: [] },
 
-    /* ── forms ── */
-    brandForm:   { brand: '', ids: [] },
-    tagInputVal: '',
-    idForm:      { rows: [] },
+          /* ══ lifecycle ══ */
+          init() {
+            this.fetchBrands(1);
+          },
 
-    /* ══ lifecycle ══ */
-    init() { this.fetchBrands(1) },
+          /* ══ helpers ══ */
+          countActive(b) {
+            return (b.ids || []).filter((i) => i.status === "ACTIVE").length;
+          },
+          countBlock(b) {
+            return (b.ids || []).filter((i) => i.status === "SUSPENDED").length;
+          },
 
-    /* ══ helpers ══ */
-    countActive(b) { return (b.ids||[]).filter(i=>i.status==='ACTIVE').length },
-    countBlock(b)  { return (b.ids||[]).filter(i=>i.status==='SUSPENDED').length  },
+          showToast(msg, type = "success") {
+            clearTimeout(this.toast._t);
+            this.toast = {
+              show: true,
+              msg,
+              type,
+              _t: setTimeout(() => {
+                this.toast.show = false;
+              }, 3000),
+            };
+          },
 
-    showToast(msg, type='success') {
-      clearTimeout(this.toast._t)
-      this.toast = { show: true, msg, type, _t: setTimeout(()=>{ this.toast.show=false }, 3000) }
-    },
+          /* ══ API: fetch list ══ */
+          async fetchBrands(page = 1) {
+            this.loading.list = true;
+            this.listError = null;
+            try {
+              const params = new URLSearchParams({
+                page,
+                limit: this.pagination.limit,
+              });
+              if (this.search.key.trim()) {
+                params.set("key", this.search.key.trim());
+                params.set("field", this.search.field);
+              }
+              const res = await fetch(`${BASE}/api/brand?${params}`);
+              if (!res.ok) throw new Error(`Server error ${res.status}`);
+              const json = await res.json();
 
-    /* ══ API: fetch list ══ */
-    async fetchBrands(page=1) {
-      this.loading.list = true
-      this.listError = null
-      try {
-        const params = new URLSearchParams({ page, limit: this.pagination.limit })
-        if (this.search.key.trim()) {
-          params.set('key',   this.search.key.trim())
-          params.set('field', this.search.field)
-        }
-        const res = await fetch(`${BASE}/api/brand?${params}`)
-        if (!res.ok) throw new Error(`Server error ${res.status}`)
-        const json = await res.json()
-
-        /* Support both { data:[...], total, page, totalPages }
+              /* Support both { data:[...], total, page, totalPages }
            and plain array responses */
-        if (Array.isArray(json)) {
-          this.brands = json
-          this.pagination = { page:1, limit: this.pagination.limit, total: json.length, totalPages: 1 }
-        } else {
-          this.brands          = json.data      ?? json.items ?? []
-          this.pagination.page = json.page      ?? page
-          this.pagination.total      = json.total      ?? this.brands.length
-          this.pagination.totalPages = json.totalPages ?? json.pages ?? 1
-        }
-      } catch(e) {
-        this.listError = e.message || 'Failed to load brands.'
-      } finally {
-        this.loading.list = false
-      }
-    },
+              if (Array.isArray(json)) {
+                this.brands = json;
+                this.pagination = {
+                  page: 1,
+                  limit: this.pagination.limit,
+                  total: json.length,
+                  totalPages: 1,
+                };
+              } else {
+                this.brands = json.data ?? json.items ?? [];
+                this.pagination.page = json.page ?? page;
+                this.pagination.total = json.total ?? this.brands.length;
+                this.pagination.totalPages = json.totalPage ?? json.pages ?? 1;
+              }
+            } catch (e) {
+              this.listError = e.message || "Failed to load brands.";
+            } finally {
+              this.loading.list = false;
+            }
+          },
 
-    /* ══ API: fetch single (for edit pre-fill) ══ */
-    async fetchOne(id) {
-      const res = await fetch(`${BASE}/api/brand/${id}`)
-      if (!res.ok) throw new Error(`Server error ${res.status}`)
-      return res.json()
-    },
+          /* ══ API: fetch single (for edit pre-fill) ══ */
+          async fetchOne(id) {
+            const res = await fetch(`${BASE}/api/brand/${id}`);
+            if (!res.ok) throw new Error(`Server error ${res.status}`);
+            return res.json();
+          },
 
-    /* ══ Brand modal ══ */
-    openAddBrand() {
-      this.editTarget  = null
-      this.brandForm   = { brand: '', ids: [] }
-      this.tagInputVal = ''
-      this.formError   = ''
-      this.modal.brand = true
-    },
-    async openEditBrand(brand) {
-      this.formError   = ''
-      this.tagInputVal = ''
-      this.modal.brand = true
-      // optimistically pre-fill, then try to refresh from API
-      this.editTarget = brand
-      this.brandForm  = {
-        brand: brand.brand,
-        ids:   (brand.ids||[]).map(i=>({label:i.label,status:i.status||'ACTIVE'}))
-      }
-      try {
-        const fresh = await this.fetchOne(brand._id||brand.id)
-        this.editTarget = fresh
-        this.brandForm  = {
-          brand: fresh.brand,
-          ids:   (fresh.ids||[]).map(i=>({label:i.label,status:i.status||'ACTIVE'}))
-        }
-      } catch { /* keep optimistic */ }
-    },
-    addTag() {
-      const val = this.tagInputVal.replace(/,/g,'').trim()
-      if (val && !this.brandForm.ids.find(t=>t.label===val))
-        this.brandForm.ids.push({ label: val, status: 'ACTIVE' })
-      this.tagInputVal = ''
-    },
-    async saveBrand() {
-      this.formError = ''
-      if (!this.brandForm.brand.trim()) { this.formError = 'Brand name is required.'; return }
-      this.loading.save = 'brand'
-      try {
-        const payload = {
-          brand: this.brandForm.brand.trim(),
-          ids:   this.brandForm.ids
-        }
-        let res
-        if (this.editTarget) {
-          const id = this.editTarget._id || this.editTarget.id
-          res = await fetch(`${BASE}/api/brand/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          })
-        } else {
-          res = await fetch(`${BASE}/api/brand`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          })
-        }
-        if (!res.ok) {
-          const err = await res.json().catch(()=>({}))
-          throw new Error(err.message || `Server error ${res.status}`)
-        }
-        this.modal.brand = false
-        this.showToast(this.editTarget ? 'Brand updated!' : 'Brand added!')
-        await this.fetchBrands(this.pagination.page)
-      } catch(e) {
-        this.formError = e.message || 'Something went wrong.'
-      } finally {
-        this.loading.save = null
-      }
-    },
+          /* ══ Brand modal ══ */
+          openAddBrand() {
+            this.editTarget = null;
+            this.brandForm = { brand: "", ids: [] };
+            this.tagInputVal = "";
+            this.formError = "";
+            this.modal.brand = true;
+          },
+          async openEditBrand(brand) {
+            this.formError = "";
+            this.tagInputVal = "";
+            this.modal.brand = true;
+            // optimistically pre-fill, then try to refresh from API
+            this.editTarget = brand;
+            this.brandForm = {
+              brand: brand.brand,
+              ids: (brand.ids || []).map((i) => ({
+                label: i.label,
+                status: i.status || "ACTIVE",
+              })),
+            };
+            try {
+              const fresh = await this.fetchOne(brand._id || brand.id);
+              this.editTarget = fresh;
+              this.brandForm = {
+                brand: fresh.brand,
+                ids: (fresh.ids || []).map((i) => ({
+                  label: i.label,
+                  status: i.status || "ACTIVE",
+                })),
+              };
+            } catch {
+              /* keep optimistic */
+            }
+          },
+          addTag() {
+            const val = this.tagInputVal.replace(/,/g, "").trim();
+            if (val && !this.brandForm.ids.find((t) => t.label === val))
+              this.brandForm.ids.push({ label: val, status: "ACTIVE" });
+            this.tagInputVal = "";
+          },
+          async saveBrand() {
+            this.formError = "";
+            if (!this.brandForm.brand.trim()) {
+              this.formError = "Brand name is required.";
+              return;
+            }
+            this.loading.save = "brand";
+            try {
+              const payload = {
+                brand: this.brandForm.brand.trim(),
+                ids: this.brandForm.ids,
+              };
+              let res;
+              if (this.editTarget) {
+                const id = this.editTarget._id || this.editTarget.id;
+                res = await fetch(`${BASE}/api/brand/${id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                });
+              } else {
+                res = await fetch(`${BASE}/api/brand`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                });
+              }
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || `Server error ${res.status}`);
+              }
+              this.modal.brand = false;
+              this.showToast(
+                this.editTarget ? "Brand updated!" : "Brand added!",
+              );
+              await this.fetchBrands(this.pagination.page);
+            } catch (e) {
+              this.formError = e.message || "Something went wrong.";
+            } finally {
+              this.loading.save = null;
+            }
+          },
 
-    /* ══ Delete brand ══ */
-    confirmDelete(brand) {
-      this.deleteTarget = brand
-      this.modal.del    = true
-    },
-    async deleteBrand() {
-      this.loading.save = 'del'
-      try {
-        const id  = this.deleteTarget._id || this.deleteTarget.id
-        const res = await fetch(`${BASE}/api/brand/${id}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error(`Server error ${res.status}`)
-        this.modal.del = false
-        this.showToast('Brand deleted.', 'success')
-        // go back a page if last item on page was deleted
-        const newPage = this.brands.length === 1 && this.pagination.page > 1
-          ? this.pagination.page - 1
-          : this.pagination.page
-        await this.fetchBrands(newPage)
-      } catch(e) {
-        this.showToast(e.message || 'Delete failed.', 'error')
-      } finally {
-        this.loading.save = null
-      }
-    },
+          /* ══ Delete brand ══ */
+          confirmDelete(brand) {
+            this.deleteTarget = brand;
+            this.modal.del = true;
+          },
+          async deleteBrand() {
+            this.loading.save = "del";
+            try {
+              const id = this.deleteTarget._id || this.deleteTarget.id;
+              const res = await fetch(`${BASE}/api/brand/${id}`, {
+                method: "DELETE",
+              });
+              if (!res.ok) throw new Error(`Server error ${res.status}`);
+              this.modal.del = false;
+              this.showToast("Brand deleted.", "success");
+              // go back a page if last item on page was deleted
+              const newPage =
+                this.brands.length === 1 && this.pagination.page > 1
+                  ? this.pagination.page - 1
+                  : this.pagination.page;
+              await this.fetchBrands(newPage);
+            } catch (e) {
+              this.showToast(e.message || "Delete failed.", "error");
+            } finally {
+              this.loading.save = null;
+            }
+          },
 
-    /* ══ ID modal ══ */
-    openAddId(brand) {
-      this.idTarget  = brand
-      this.idForm    = { rows: (brand.ids||[]).map(i=>({ uid: i._id||i.id||Math.random(), label: i.label, status: i.status||'ACTIVE' })) }
-      this.formError = ''
-      this.modal.id  = true
-    },
-    async saveIds() {
-      this.formError = ''
-      if (this.idForm.rows.some(r=>!r.label.trim())) { this.formError = 'All ID labels must be filled.'; return }
-      this.loading.save = 'ids'
-      try {
-        const id = this.idTarget._id || this.idTarget.id
-        const payload = {
-          brand: this.idTarget.brand,
-          ids:   this.idForm.rows.filter(r=>r.label.trim()).map(r=>({ label: r.label.trim(), status: r.status }))
-        }
-        const res = await fetch(`${BASE}/api/brand/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-        if (!res.ok) {
-          const err = await res.json().catch(()=>({}))
-          throw new Error(err.message || `Server error ${res.status}`)
-        }
-        this.modal.id = false
-        this.showToast('IDs saved!')
-        await this.fetchBrands(this.pagination.page)
-      } catch(e) {
-        this.formError = e.message || 'Something went wrong.'
-      } finally {
-        this.loading.save = null
+          /* ══ ID modal ══ */
+          openAddId(brand) {
+            this.idTarget = brand;
+            this.idForm = {
+              rows: (brand.ids || []).map((i) => ({
+                uid: i._id || i.id || Math.random(),
+                label: i.label,
+                status: i.status || "ACTIVE",
+              })),
+            };
+            this.formError = "";
+            this.modal.id = true;
+          },
+          async saveIds() {
+            this.formError = "";
+            if (this.idForm.rows.some((r) => !r.label.trim())) {
+              this.formError = "All ID labels must be filled.";
+              return;
+            }
+            this.loading.save = "ids";
+            try {
+              const id = this.idTarget._id || this.idTarget.id;
+              const payload = {
+                brand: this.idTarget.brand,
+                ids: this.idForm.rows
+                  .filter((r) => r.label.trim())
+                  .map((r) => ({ label: r.label.trim(), status: r.status })),
+              };
+              const res = await fetch(`${BASE}/api/brand/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || `Server error ${res.status}`);
+              }
+              this.modal.id = false;
+              this.showToast("IDs saved!");
+              await this.fetchBrands(this.pagination.page);
+            } catch (e) {
+              this.formError = e.message || "Something went wrong.";
+            } finally {
+              this.loading.save = null;
+            }
+          },
+        };
       }
-    },
-  }
-}
-</script>
-</body>
+    </script>
+  </body>
 </html>

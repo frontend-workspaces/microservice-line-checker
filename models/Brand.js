@@ -1,21 +1,22 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 // sub-document schema for ids[]
 const idItemSchema = new mongoose.Schema(
   {
     label: {
+      unique: true,
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
     status: {
       type: String,
-      enum: ['ACTIVE', 'SUSPENDED', 'NOT_FOUND', 'UNKNOWN'],
-      default: 'ACTIVE'
-    }
+      enum: ["ACTIVE", "SUSPENDED", "NOT_FOUND", "UNKNOWN"],
+      default: "ACTIVE",
+    },
   },
-  { _id: false } // disable auto _id for sub items (optional)
-)
+  { _id: false }, // disable auto _id for sub items (optional)
+);
 
 const brandSchema = new mongoose.Schema(
   {
@@ -27,12 +28,12 @@ const brandSchema = new mongoose.Schema(
     },
     ids: {
       type: [idItemSchema],
-      default: []
-    }
+      default: [],
+    },
   },
   {
     timestamps: true,
   },
 );
 
-module.exports = mongoose.model('Brand', brandSchema)
+module.exports = mongoose.model("Brand", brandSchema);
