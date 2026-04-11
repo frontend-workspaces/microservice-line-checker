@@ -36,8 +36,8 @@ app.use("/api/checker", lineRoutes);
 app.use('/api/data', dataRoutes)
 app.use('/api/brand', brandRoutes)
 
-connectMongoDB().then(() => {
-  app.listen(PORT, () => {
+connectMongoDB()
+
+app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-  });
 });
