@@ -13,11 +13,11 @@ function detectLineStatus({ finalUrl, title, pTexts }) {
   const normalizedPTexts = pTexts.map(normalizeText);
 
   const has404Text = normalizedPTexts.some((text) =>
-    text.includes("404 not found")
+    text.includes("404 not found"),
   );
 
   const hasScanText = normalizedPTexts.some((text) =>
-    text.includes("scan qr code to add friend")
+    text.includes("scan qr code to add friend"),
   );
 
   if (finalUrl.startsWith("https://store.line.me")) {
@@ -125,42 +125,81 @@ async function checkLineId(lineId) {
 }
 
 function getStatusEmoji(status) {
-  if (status === 'ACTIVE') return '🟢'
-  if (status === 'SUSPENDED') return '🔴'
-  if (status === 'NOT_FOUND') return '🟠'
-  return '⚪'
+  if (status === "ACTIVE") return "🟢";
+  if (status === "SUSPENDED") return "🔴";
+  if (status === "NOT_FOUND") return "🟠";
+  return "⚪";
 }
 
 function getStatusText(status) {
-  if (status === 'ACTIVE') return 'ปกติ'
-  if (status === 'SUSPENDED') return 'ถูกระงับ'
-  if (status === 'NOT_FOUND') return 'ไม่พบข้อมูล'
-  return 'ไม่ทราบ'
+  if (status === "ACTIVE") return "ปกติ";
+  if (status === "SUSPENDED") return "ถูกระงับ";
+  if (status === "NOT_FOUND") return "ไม่พบข้อมูล";
+  return "ไม่ทราบ";
 }
 
 function buildBrandHealthMessage(brand, ids = []) {
-  const lines = [
-    `<b>LINE CHECKER</b> - ${brand}`,
-    `━━━━━━━━━━━━━━━━`
-  ]
+  const lines = [`<b>LINE CHECKER</b> - ${brand}`, `━━━━━━━━━━━━━━━━`];
 
   for (const item of ids) {
     const url = `https://line.me/R/ti/p/${item.label}`;
     lines.push(
-      `${getStatusEmoji(item.status)} <b><a href="${url}">${item.label}</a></b> (${getStatusText(item.status)})`
-    )
+      `${getStatusEmoji(item.status)} <b><a href="${url}">${item.label}</a></b> (${getStatusText(item.status)})`,
+    );
   }
 
-  return lines.join('\n')
+  return lines.join("\n");
 }
 
 async function sendBrandStatusesToTelegram(brand, ids) {
-  const text = buildBrandHealthMessage(brand, ids)
-  await sendTelegramNotice({ text })
+  const text = buildBrandHealthMessage(brand, ids);
+  await sendTelegramNotice({ text });
 }
 
+// ---------- Get LINE ID From ENV -----------
+function getEnvLineIds() {
+  return (process.env.LINE_ID_LIST || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function textResponse(lineId, status) {
+  if (status === "ACTIVE") {
+    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ 🟢 ปกติ`;
+  }
+  if (status === "SUSPENDED") {
+    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ 🔴 ถูกระงับ`;
+  }
+  if (status === "UNKNOWN") {
+    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ ⚪ ไม่ทราบ`;
+  }
+  if (status === "NOT_FOUND") {
+    return `LINE ID <b><a href="https://line.me/R/ti/p/${lineId}">${lineId}</a></b>: สถานะ 🟠 ไม่พบข้อมูล`;
+  }
+
+  return `สถานะ LINE ID ${lineId}: ${status}`;
+}
+
+
+async function sendLineStatusesToTelegram(lineIds) {
+  for (const id of lineIds) {
+    try {
+      const result = await checkLineId(id);
+      await sendTelegramNotice({
+        text: textResponse(result.lineId, result.status),
+      });
+    } catch (error) {
+      console.log("ERROR checkLineId:", error);
+    }
+  }
+}
+// ---------- Get LINE ID From ENV -----------
+
 module.exports = {
+  getEnvLineIds,
+  sendLineStatusesToTelegram,
   checkLineId,
   sendBrandStatusesToTelegram,
-  buildBrandHealthMessage
-}
+  buildBrandHealthMessage,
+};
